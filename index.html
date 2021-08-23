@@ -1,0 +1,403 @@
+<html>
+
+<head>
+  <meta name="viewport" content="initial-scale=1.0, width=device-width" />
+  <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js" type="text/javascript" charset="utf-8"></script>
+  <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js" type="text/javascript" charset="utf-8"></script>
+  <meta name="viewport" content="initial-scale=1.0, width=device-width" />
+  <script type="text/javascript" src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
+  <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js" type="text/javascript" charset="utf-8"></script>
+  <link rel="stylesheet" type="text/css" href="style.css" />
+  <link rel="icon" href="icon.ico" type="image/x-icon">
+</head>
+
+<body>
+  <div style="width: 700; height: 500" id="mapContainer"></div>
+  <form name="submit" class="button">
+    <input type="button" name="submit" class="style" value="Построить" />
+  </form>
+  <form name="optimize" class="button">
+    <input type="button" name="optimize" class="style" value="Оптимизировать" />
+  </form>
+  <form name="upload" class="button">
+    <input type="button" name="upload" class="style" value="Выгрузить" />
+  </form>
+  <div class="content"></div>
+  <script>
+
+    // Initialize the platform object:
+    var platform = new H.service.Platform({
+      'apikey': 'Gi8OmOxxfWu0fNk5qsZUVVInpl82TegIrmVJWLtrqmg'
+    });
+
+    // Obtain the default map types from the platform object
+    var maptypes = platform.createDefaultLayers();
+    var defaultLayers = platform.createDefaultLayers();
+
+    // Instantiate (and display) a map object:
+    var map = new H.Map(
+      document.getElementById('mapContainer'),
+      maptypes.vector.normal.map,
+      {
+        zoom: 10
+      });
+
+    var mapEvents = new H.mapevents.MapEvents(map);
+    var ui = H.ui.UI.createDefault(map, defaultLayers);
+    switchMapLanguage(map, platform)
+
+    // Add event listener:
+    map.addEventListener('tap', function (evt) {
+      // Log 'tap' and 'mouse' events:
+      console.log(evt.type, evt.currentPointer.type);
+    });
+
+    // Instantiate the default behavior, providing the mapEvents object:
+    var behavior = new H.mapevents.Behavior(mapEvents);
+
+    function switchMapLanguage(map, platform) {
+      let defaultLayers = platform.createDefaultLayers({
+        lg: 'ru'
+      });
+      map.setBaseLayer(defaultLayers.vector.normal.map);
+      var ui = H.ui.UI.createDefault(map, defaultLayers, 'ru-RU');
+      ui.removeControl('mapsettings');
+    }
+
+    if ("geolocation" in navigator) {
+      console.log('geolocation is available');
+      navigator.geolocation.getCurrentPosition(position => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        console.log(lat);
+        console.log(lon);
+        map.setCenter({ lat: lat, lng: lon });
+      });
+    } else {
+      console.log('geolocation is not available');
+    }
+
+    // optionally - resize a larger PNG image to a specific size
+    var pngIcon = new H.map.Icon("../marker.png", { size: { w: 56, h: 40 } });
+
+    function addPolylineToMap(map) {
+      var lineString = new H.geo.LineString();
+
+      destinations.forEach(function (point) {
+        lineString.pushPoint(point);
+      });
+
+      var polyline = new H.map.Polyline(lineString, {});
+
+      map.addObject(polyline);
+
+      map.getViewModel().setLookAtData({ bounds: polyline.getBoundingBox() });
+
+      distanceBetweenMarkers(map)
+
+    }
+
+    function submitForm(e) {
+      console.log(destinations)
+      addPolylineToMap(map)
+
+    }
+
+    function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+      var R = 6371; // Radius of the earth in km
+      var dLat = deg2rad(lat2 - lat1);  // deg2rad below
+      var dLon = deg2rad(lon2 - lon1);
+      var a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        ;
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      var d = R * c; // Distance in km
+      return d  * 1000;
+    }
+
+    function deg2rad(deg) {
+      return deg * (Math.PI / 180)
+    }
+
+    var dictDistance = new Map()
+    const varpoints = [[], [], [], [], [], [], []]
+    function distanceBetweenMarkers(map) {
+
+      for (i = 0; i < destinations.length; i++) {
+
+        for (j = 0; j < destinations.length; j++) {
+          const distance = getDistanceFromLatLonInKm(destinations[i].lat, destinations[i].lng, destinations[j].lat, destinations[j].lng)
+          varpoints[i].push(parseInt(distance))
+
+        }
+
+      }
+      console.log(varpoints)
+    }
+
+    var submitButton = document.submit.submit;
+    submitButton.addEventListener("click", submitForm);
+
+    const destinations = []
+    map.addEventListener("tap", event => {
+      const position = map.screenToGeo(
+        event.currentPointer.viewportX,
+        event.currentPointer.viewportY
+      );
+
+      console.log(position);
+      const marker = new H.map.Marker({ lat: position.lat, lng: position.lng },
+        {
+          icon: pngIcon
+        });
+      map.addObject(marker);
+      destinations.push({ lat: position.lat, lng: position.lng })
+      console.log(destinations)
+
+    })
+
+    const deg_an = []
+
+    function getCornerBetweenCoordinates(map, optpath) {
+
+      const corner12 = [Math.abs(optpath[1].lat - optpath[0].lat), Math.abs(optpath[1].lng - optpath[0].lng)]
+      const corner23 = [Math.abs(optpath[2].lat - optpath[1].lat), Math.abs(optpath[2].lng - optpath[1].lng)]
+      const corner34 = [Math.abs(optpath[3].lat - optpath[2].lat), Math.abs(optpath[3].lng - optpath[2].lng)]
+      const corner45 = [Math.abs(optpath[4].lat - optpath[3].lat), Math.abs(optpath[4].lng - optpath[3].lng)]
+      const corner56 = [Math.abs(optpath[5].lat - optpath[4].lat), Math.abs(optpath[5].lng - optpath[4].lng)]
+      const corner67 = [Math.abs(optpath[6].lat - optpath[5].lat), Math.abs(optpath[6].lng - optpath[5].lng)]
+
+      const an12 = Math.atan2(corner12[0], corner12[1])
+      const an23 = Math.atan2(corner23[0], corner23[1])
+      const an34 = Math.atan2(corner34[0], corner34[1])
+      const an45 = Math.atan2(corner45[0], corner45[1])
+      const an56 = Math.atan2(corner56[0], corner56[1])
+      const an67 = Math.atan2(corner67[0], corner67[1])
+
+      deg_an.push(parseFloat(an12) * 180 / parseFloat(Math.PI))
+      deg_an.push(parseFloat(an23) * 180 / parseFloat(Math.PI))
+      deg_an.push(parseFloat(an34) * 180 / parseFloat(Math.PI))
+      deg_an.push(parseFloat(an45) * 180 / parseFloat(Math.PI))
+      deg_an.push(parseFloat(an56) * 180 / parseFloat(Math.PI))
+      deg_an.push(parseFloat(an67) * 180 / parseFloat(Math.PI))
+
+    }
+
+    function fillTablePoints(optpath) {
+
+      dist12 = getDistanceFromLatLonInKm(optpath[0].lat, optpath[0].lng, optpath[1].lat, optpath[1].lng)
+      dist23 = getDistanceFromLatLonInKm(optpath[1].lat, optpath[1].lng, optpath[2].lat, optpath[2].lng)
+      dist34 = getDistanceFromLatLonInKm(optpath[2].lat, optpath[2].lng, optpath[3].lat, optpath[3].lng)
+      dist45 = getDistanceFromLatLonInKm(optpath[3].lat, optpath[3].lng, optpath[4].lat, optpath[4].lng)
+      dist56 = getDistanceFromLatLonInKm(optpath[4].lat, optpath[4].lng, optpath[5].lat, optpath[5].lng)
+      dist67 = getDistanceFromLatLonInKm(optpath[5].lat, optpath[5].lng, optpath[6].lat, optpath[6].lng)
+
+      const POINTSFORTABLE = {
+        'Контрольные точки': [
+          ['1 точка', String(optpath[0].lat) + ', ' + String(optpath[0].lng)],
+          ['2 точка', String(optpath[1].lat) + ', ' + String(optpath[1].lng)],
+          ['3 точка', String(optpath[2].lat) + ', ' + String(optpath[2].lng)],
+          ['4 точка', String(optpath[3].lat) + ', ' + String(optpath[3].lng)],
+          ['5 точка', String(optpath[4].lat) + ', ' + String(optpath[4].lng)],
+          ['6 точка', String(optpath[5].lat) + ', ' + String(optpath[5].lng)],
+          ['7 точка', String(optpath[6].lat) + ', ' + String(optpath[6].lng)]
+        ],
+        'Расстояние между точками': [
+          ['От 1 до 2', dist12 + ' метров'],
+          ['От 2 до 3', dist23 + ' метров'],
+          ['От 3 до 4', dist34 + ' метров'],
+          ['От 4 до 5', dist45 + ' метров'],
+          ['От 5 до 6', dist56 + ' метров'],
+          ['От 6 до 7', dist67 + ' метров'],
+        ]
+
+      }
+
+      document.querySelector('.content').innerHTML = `<table class="points" style='position:absolute; top:1%; right:1%;'></table>`
+      for (key in POINTSFORTABLE) {
+        let row = document.createElement('tr')
+        row.innerHTML = `<td colspan="2">${key}</td>`
+        document.querySelector('.points').appendChild(row)
+        for (let i = 0; i < POINTSFORTABLE[key].length; i++) {
+          let row = document.createElement('tr')
+          row.innerHTML = `
+    <td>${POINTSFORTABLE[key][i][0]}</td>
+    <td>${POINTSFORTABLE[key][i][1]}</td>
+  `
+          document.querySelector('.points').appendChild(row)
+        }
+      }
+      getCornerBetweenCoordinates(map, optpath)
+
+    }
+
+    const optpath = []
+    function addPolylineOptimized(way, map) {
+
+      optpath.push(destinations[parseInt(way[0]) - 1])
+      optpath.push(destinations[parseInt(way[4]) - 1])
+      optpath.push(destinations[parseInt(way[8]) - 1])
+      optpath.push(destinations[parseInt(way[12]) - 1])
+      optpath.push(destinations[parseInt(way[16]) - 1])
+      optpath.push(destinations[parseInt(way[20]) - 1])
+      optpath.push(destinations[parseInt(way[24]) - 1])
+
+      var optline = new H.geo.LineString();
+
+      optpath.forEach(function (point) {
+        optline.pushPoint(point);
+      });
+
+      var optpolyline = new H.map.Polyline(optline, { style: { lineWidth: 4, strokeColor: '#829' } });
+
+      map.addObject(optpolyline);
+
+      fillTablePoints(optpath)
+
+    }
+
+    const optimize_way = []
+    function optimize() {
+      console.log(varpoints)
+
+      // таблица с расстояниями между городами
+      var towns = varpoints
+
+      // массив, где будут храниться все просчитанные маршруты
+      var path = [];
+
+      // порядковый номер текущего маршрута
+      var counter = 0;
+
+      // самый короткий путь — сразу ставим заведомо большим, чтобы уменьшать его по мере работы алгоритма
+      var minPath = 10000000000;
+
+      // номер самого короткого маршрута
+      var minCounter;
+
+      // перебираем все варианты перемещения по городам
+      for (var i1 = 0; i1 <= 6; i1++) {
+        for (var i2 = 0; i2 <= 6; i2++) {
+          for (var i3 = 0; i3 <= 6; i3++) {
+            for (var i4 = 0; i4 <= 6; i4++) {
+              for (var i5 = 0; i5 <= 6; i5++) {
+                for (var i6 = 0; i6 <= 6; i6++) {
+                  for (var i7 = 0; i7 <= 6; i7++) {
+
+                    // нельзя посещать один и тот же город больше одного раза
+                    if (
+                      (i1 != i2) && (i1 != i3) && (i1 != i4) && (i1 != i5) && (i1 != i6) && (i1 != i7) &&
+                      (i2 != i3) && (i2 != i4) && (i2 != i5) && (i2 != i6) && (i2 != i7) &&
+                      (i3 != i4) && (i3 != i5) && (i3 != i6) && (i3 != i7) &&
+                      (i4 != i5) && (i4 != i6) && (i4 != i7) &&
+                      (i5 != i6) && (i5 != i7) &&
+                      (i6 != i7)
+                    ) {
+                      // запоминаем текущий путь
+                      path[counter] = (i1 + 1) + ' → ' + (i2 + 1) + ' → ' + (i3 + 1) + ' → ' + (i4 + 1) + ' → ' + (i5 + 1) + ' → ' + (i6 + 1) + ' → ' + (i7 + 1);
+                      // выводим его в консоль
+                      console.log(path[counter]);
+                      // если общее расстоения этого пути меньше минимального
+                      if ((towns[i1][i2] + towns[i2][i3] + towns[i3][i4] + towns[i4][i5] + towns[i5][i6] + towns[i6][i7]) < minPath) {
+                        // то мы запоминаем это минимальное расстояние
+                        minPath = towns[i1][i2] + towns[i2][i3] + towns[i3][i4] + towns[i4][i5] + towns[i5][i6] + towns[i6][i7];
+                        // выводим его в консоль
+                        console.log(minPath);
+                        // запоминаем номер этого маршрута с минимальным расстоянием
+                        minCounter = counter;
+                      }
+                      // когда всё сделали, увеличиваем номер маршрута
+                      counter += 1;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+      // когда прошли все варианты, выводим найденное решение
+      console.log('Путь с самой короткой длиной маршрута: ' + path[minCounter] + '(' + minPath + ' км.)');
+      addPolylineOptimized(path[minCounter], map)
+
+    }
+
+    function need(e) {
+      optimize()
+
+    }
+
+    var sendButton = document.optimize.optimize;
+    sendButton.addEventListener("click", need);
+
+    function writeFile(name) {
+
+      var val = ''
+      let st1 = ''
+      let st2 = ''
+      let st3 = ''
+      let st4 = ''
+      let st5 = ''
+      let st6 = ''
+      let st7 = ''
+      let st8 = ''
+      let st9 = ''
+      let st10 = ''
+      let st11 = ''
+      let st12 = ''
+      let st13 = ''
+
+      st1 = String(optpath[0].lat) + ',' + String(optpath[0].lng)
+      st3 = String(optpath[1].lat) + ',' + String(optpath[1].lng)
+      st5 = String(optpath[2].lat) + ',' + String(optpath[2].lng)
+      st7 = String(optpath[3].lat) + ',' + String(optpath[3].lng)
+      st9 = String(optpath[4].lat) + ',' + String(optpath[4].lng)
+      st11 = String(optpath[5].lat) + ',' + String(optpath[5].lng)
+      st13 = String(optpath[6].lat) + ',' + String(optpath[0].lng)
+
+      st2 = String(parseInt(deg_an[0]))
+      st4 = String(parseInt(deg_an[1]))
+      st6 = String(parseInt(deg_an[2]))
+      st8 = String(parseInt(deg_an[3]))
+      st10 = String(parseInt(deg_an[4]))
+      st12 = String(parseInt(deg_an[5]))
+
+      val = `${st1}
+       ${st2}
+       ${st3}
+       ${st4}
+       ${st5}
+       ${st6}
+       ${st7}
+       ${st8}
+       ${st9}
+       ${st10}
+       ${st11}
+       ${st12}
+       ${st13}`
+
+      var download = document.createElement("a");
+      download.href = "data:text/plain;content-disposition=attachment;filename=file," + val;
+      download.download = name;
+      download.style.display = "none";
+      download.id = "download"; document.body.appendChild(download);
+      document.getElementById("download").click();
+      document.body.removeChild(download);
+
+    }
+
+    function upload(e) {
+      console.log(123)
+      writeFile("coordinates.txt")
+
+    }
+
+    var sendButton = document.upload.upload;
+    sendButton.addEventListener("click", upload);
+
+  </script>
+</body>
+
+</html>
