@@ -162,27 +162,17 @@
 
     function getCornerBetweenCoordinates(map, optpath) {
 
-      const corner12 = [Math.abs(optpath[1].lat - optpath[0].lat), Math.abs(optpath[1].lng - optpath[0].lng)]
-      const corner23 = [Math.abs(optpath[2].lat - optpath[1].lat), Math.abs(optpath[2].lng - optpath[1].lng)]
-      const corner34 = [Math.abs(optpath[3].lat - optpath[2].lat), Math.abs(optpath[3].lng - optpath[2].lng)]
-      const corner45 = [Math.abs(optpath[4].lat - optpath[3].lat), Math.abs(optpath[4].lng - optpath[3].lng)]
-      const corner56 = [Math.abs(optpath[5].lat - optpath[4].lat), Math.abs(optpath[5].lng - optpath[4].lng)]
-      const corner67 = [Math.abs(optpath[6].lat - optpath[5].lat), Math.abs(optpath[6].lng - optpath[5].lng)]
+      for (j = 1; j < 6; j++) {
 
-      const an12 = Math.atan2(corner12[0], corner12[1])
-      const an23 = Math.atan2(corner23[0], corner23[1])
-      const an34 = Math.atan2(corner34[0], corner34[1])
-      const an45 = Math.atan2(corner45[0], corner45[1])
-      const an56 = Math.atan2(corner56[0], corner56[1])
-      const an67 = Math.atan2(corner67[0], corner67[1])
+        var distance12 = getDistanceFromLatLonInKm(optpath[j - 1].lat, optpath[j - 1].lng, optpath[j].lat, optpath[j].lng)
+        var distance23 = getDistanceFromLatLonInKm(optpath[j].lat, optpath[j].lng, optpath[j + 1].lat, optpath[j + 1].lng)
+        var distance13 = getDistanceFromLatLonInKm(optpath[j - 1].lat, optpath[j - 1].lng, optpath[j + 1].lat, optpath[j + 1].lng)
+        const corner = Math.acos((((distance12 ** 2)+(distance23 ** 2) - (distance13 ** 2)) / (2 * distance12 * distance23))) * 180 / parseFloat(Math.PI)
+        deg_an.push(180 - corner)
 
-      deg_an.push(parseFloat(an12) * 180 / parseFloat(Math.PI))
-      deg_an.push(parseFloat(an23) * 180 / parseFloat(Math.PI))
-      deg_an.push(parseFloat(an34) * 180 / parseFloat(Math.PI))
-      deg_an.push(parseFloat(an45) * 180 / parseFloat(Math.PI))
-      deg_an.push(parseFloat(an56) * 180 / parseFloat(Math.PI))
-      deg_an.push(parseFloat(an67) * 180 / parseFloat(Math.PI))
+      }
 
+    
     }
 
     function fillTablePoints(optpath) {
@@ -347,22 +337,20 @@
       let st10 = ''
       let st11 = ''
       let st12 = ''
-      let st13 = ''
 
       st1 = String(optpath[0].lat) + ',' + String(optpath[0].lng)
-      st3 = String(optpath[1].lat) + ',' + String(optpath[1].lng)
-      st5 = String(optpath[2].lat) + ',' + String(optpath[2].lng)
-      st7 = String(optpath[3].lat) + ',' + String(optpath[3].lng)
-      st9 = String(optpath[4].lat) + ',' + String(optpath[4].lng)
-      st11 = String(optpath[5].lat) + ',' + String(optpath[5].lng)
-      st13 = String(optpath[6].lat) + ',' + String(optpath[0].lng)
+      st2 = String(optpath[1].lat) + ',' + String(optpath[1].lng)
+      st4 = String(optpath[2].lat) + ',' + String(optpath[2].lng)
+      st6 = String(optpath[3].lat) + ',' + String(optpath[3].lng)
+      st8 = String(optpath[4].lat) + ',' + String(optpath[4].lng)
+      st10 = String(optpath[5].lat) + ',' + String(optpath[5].lng)
+      st12 = String(optpath[6].lat) + ',' + String(optpath[0].lng)
 
-      st2 = String(parseInt(deg_an[0]))
-      st4 = String(parseInt(deg_an[1]))
-      st6 = String(parseInt(deg_an[2]))
-      st8 = String(parseInt(deg_an[3]))
-      st10 = String(parseInt(deg_an[4]))
-      st12 = String(parseInt(deg_an[5]))
+      st3 = String(parseInt(deg_an[0]))
+      st5 = String(parseInt(deg_an[1]))
+      st7 = String(parseInt(deg_an[2]))
+      st9 = String(parseInt(deg_an[3]))
+      st11 = String(parseInt(deg_an[4]))
 
       val = `${st1}
        ${st2}
@@ -375,8 +363,7 @@
        ${st9}
        ${st10}
        ${st11}
-       ${st12}
-       ${st13}`
+       ${st12}`
 
       var download = document.createElement("a");
       download.href = "data:text/plain;content-disposition=attachment;filename=file," + val;
